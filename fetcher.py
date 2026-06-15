@@ -77,29 +77,61 @@ def _normalize_rss(entry: feedparser.FeedParserDict, feed_meta: dict) -> dict | 
 # ---------------------------------------------------------------------------
 
 
+def _fetch_one_feed(url: str, feed_meta: dict) -> tuple[list[dict], str]:
+    """
+    Attempt to fetch and parse a single RSS URL.
+    Returns (articles, status_note) where status_note is a short log suffix.
+    Raises on hard failure so the caller can try a fallback URL.
+    """
+    parsed = feedparser.parse(url, request_headers={"User-Agent": "news-agent/1.0"})
+    if parsed.bozo and not parsed.entries:
+        raise ValueError(f"bozo feed: {parsed.bozo_exception}")
+    articles = []
+    for entry in parsed.entries[: config.FETCH_MAX_ARTICLES_PER_FEED]:
+        article = _normalize_rss(entry, feed_meta)
+        if article:
+            articles.append(article)
+    return articles, url
+
+
 def fetch_rss() -> list[dict]:
-    """Fetch all configured RSS feeds and return a flat list of articles."""
+    """
+    Fetch all configured RSS feeds and return a flat list of articles.
+
+    For each feed, the primary URL is tried first.  If it fails (timeout,
+    bozo parse with 0 entries, or any exception), the optional ``fallback_url``
+    from config is tried automatically.  Both rsshub.app and
+    rsshub.rssforever.com are used as primary/fallback across different feeds
+    to spread load and avoid single-instance rate limits.
+    """
     articles: list[dict] = []
     for feed_meta in config.RSS_FEEDS:
-        url = feed_meta["url"]
+        primary_url = feed_meta["url"]
+        fallback_url = feed_meta.get("fallback_url")
+        source = feed_meta["source"]
+        fetched: list[dict] = []
+        used_url = primary_url
+
         try:
-            logger.info("Fetching RSS: %s (%s)", feed_meta["source"], url)
-            parsed = feedparser.parse(url, request_headers={"User-Agent": "news-agent/1.0"})
-            if parsed.bozo and not parsed.entries:
-                logger.warning("Feed parse error for %s: %s", url, parsed.bozo_exception)
-                continue
-            count_before = len(articles)
-            for entry in parsed.entries[: config.FETCH_MAX_ARTICLES_PER_FEED]:
-                article = _normalize_rss(entry, feed_meta)
-                if article:
-                    articles.append(article)
-            logger.info(
-                "  → %d articles from %s",
-                len(articles) - count_before,
-                feed_meta["source"],
-            )
+            logger.info("Fetching RSS: %s  [%s]", source, primary_url)
+            fetched, used_url = _fetch_one_feed(primary_url, feed_meta)
         except Exception as exc:
-            logger.error("Failed to fetch %s: %s", url, exc)
+            if fallback_url:
+                logger.warning(
+                    "  Primary failed (%s) — retrying fallback: %s", exc, fallback_url
+                )
+                try:
+                    fetched, used_url = _fetch_one_feed(fallback_url, feed_meta)
+                except Exception as exc2:
+                    logger.error("  Fallback also failed (%s): %s", fallback_url, exc2)
+            else:
+                logger.error("  Failed, no fallback configured: %s", exc)
+
+        count = len(fetched)
+        suffix = " [fallback]" if used_url != primary_url else ""
+        logger.info("  → %d articles from %s%s", count, source, suffix)
+        articles.extend(fetched)
+
     return articles
 
 
