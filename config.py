@@ -45,34 +45,47 @@ RSS_FEEDS = [
         "source": "IMF",
         "lang": "en",
     },
-    # Chinese — financial news (via RSSHub)
+    # Chinese — financial news (via RSSHub, two instances as primary/fallback)
+    # Primary: rsshub.rssforever.com  Fallback: rsshub.app  (or vice-versa)
     {
-        "url": "https://rsshub.app/wallstreetcn/live",
-        "source": "华尔街见闻-实时快讯",
+        "url": "https://rsshub.rssforever.com/wallstreetcn/live",
+        "fallback_url": "https://rsshub.app/wallstreetcn/live",
+        "source": "华尔街见闻-快讯",
         "lang": "zh",
     },
     {
-        "url": "https://rsshub.app/wallstreetcn/news",
+        "url": "https://rsshub.rssforever.com/wallstreetcn/news",
+        "fallback_url": "https://rsshub.app/wallstreetcn/news",
         "source": "华尔街见闻-资讯",
         "lang": "zh",
     },
     {
-        "url": "https://rsshub.app/yicai/brief",
-        "source": "第一财经",
+        "url": "https://rsshub.rssforever.com/yicai/brief",
+        "fallback_url": "https://rsshub.app/yicai/brief",
+        "source": "第一财经-简讯",
         "lang": "zh",
     },
     {
-        "url": "https://rsshub.app/caixin/latest",
+        "url": "https://rsshub.rssforever.com/yicai/headline",
+        "fallback_url": "https://rsshub.app/yicai/headline",
+        "source": "第一财经-头条",
+        "lang": "zh",
+    },
+    {
+        "url": "https://rsshub.rssforever.com/caixin/latest",
+        "fallback_url": "https://rsshub.app/caixin/latest",
         "source": "财新网",
         "lang": "zh",
     },
     {
-        "url": "https://rsshub.app/cls/telegraph",
-        "source": "财联社-电报",
+        "url": "https://rsshub.rssforever.com/gelonghui/live",
+        "fallback_url": "https://rsshub.app/gelonghui/live",
+        "source": "格隆汇-快讯",
         "lang": "zh",
     },
     {
-        "url": "https://rsshub.app/36kr/newsflashes",
+        "url": "https://rsshub.rssforever.com/36kr/newsflashes",
+        "fallback_url": "https://rsshub.app/36kr/newsflashes",
         "source": "36氪-快讯",
         "lang": "zh",
     },
