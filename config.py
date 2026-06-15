@@ -15,11 +15,6 @@ load_dotenv()
 RSS_FEEDS = [
     # English — business / macro
     {
-        "url": "https://feeds.reuters.com/reuters/businessNews",
-        "source": "Reuters Business",
-        "lang": "en",
-    },
-    {
         "url": "https://www.cnbc.com/id/10001147/device/rss/rss.html",
         "source": "CNBC",
         "lang": "en",
@@ -38,11 +33,6 @@ RSS_FEEDS = [
     {
         "url": "https://www.ecb.europa.eu/rss/press.html",
         "source": "ECB",
-        "lang": "en",
-    },
-    {
-        "url": "https://www.imf.org/en/News/rss",
-        "source": "IMF",
         "lang": "en",
     },
     # Chinese — financial news (via RSSHub, two instances as primary/fallback)
