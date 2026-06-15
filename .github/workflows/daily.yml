@@ -1,0 +1,78 @@
+name: Daily Financial News Agent
+
+on:
+  schedule:
+    # Every day at 23:00 UTC
+    - cron: "0 23 * * *"
+  # Allow manual trigger from the Actions tab
+  workflow_dispatch:
+
+permissions:
+  contents: write   # needed to commit the report back to the repo
+
+jobs:
+  run-agent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      # ── Checkout ──────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Fetch full history so the commit step can push cleanly
+          fetch-depth: 1
+
+      # ── Python setup ──────────────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # ── Dependency cache ──────────────────────────────────────────────────
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+          restore-keys: pip-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # ── sentence-transformers model cache ─────────────────────────────────
+      # The model (~120 MB) is downloaded on first run and cached between runs.
+      - name: Cache sentence-transformers model
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface/hub
+          key: hf-${{ runner.os }}-paraphrase-multilingual-MiniLM-L12-v2
+          restore-keys: hf-${{ runner.os }}-
+
+      # ── Persist SQLite DB between runs ───────────────────────────────────
+      # We keep the DB as a cached artifact so processed_urls survives across
+      # workflow runs without committing a binary to the repo.
+      - name: Restore database cache
+        uses: actions/cache@v4
+        with:
+          path: news_agent.db
+          key: newsdb-${{ runner.os }}-${{ github.run_number }}
+          restore-keys: newsdb-${{ runner.os }}-
+
+      # ── Run the pipeline ──────────────────────────────────────────────────
+      - name: Run news agent
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+          MARKETAUX_API_KEY: ${{ secrets.MARKETAUX_API_KEY }}
+        run: python main.py
+
+      # ── Commit report back to repo ────────────────────────────────────────
+      - name: Commit daily report
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add reports/
+          # Only commit if there is something new
+          git diff --cached --quiet || git commit -m "chore: daily report $(date -u +%Y-%m-%d)"
+          git push
